@@ -5,10 +5,22 @@ output:
     keep_md: true
 ---
 
+```{r setoptions, echo=FALSE, results='asis'}
+require(knitr)
+opts_chunk$set(echo=TRUE)
+```
+
+
+```{r, echo=FALSE, results='hide'}
+require(stats)
+require(ggplot2)
+require(dplyr)
+Sys.setlocale("LC_TIME", "C")
+```
+
 
 ## Loading and preprocessing the data
 ```{r}
-Sys.setlocale("LC_TIME", "C")
 MyData <- read.csv(unz("activity.zip", "activity.csv"), sep = ",", header = TRUE, strip.white = TRUE)
 MyData$date<-as.Date(MyData$date)
 MyData$weekday<-weekdays(MyData$date, abbreviate = FALSE)
@@ -18,12 +30,9 @@ MyData$weekday<-weekdays(MyData$date, abbreviate = FALSE)
 ## What is mean total number of steps taken per day?
 
 ```{r}
-library(stats)
-library(ggplot2)
-
 StepsByDay<-aggregate(steps~date, data=MyData, sum)
 m <- ggplot(StepsByDay, aes(x=steps)) 
-m + geom_histogram(aes(fill = ..count..), binwidth=1000)
+m + geom_histogram(aes(fill = ..count..), binwidth=1000) + ggtitle("total number of steps taken each day")
 
 print (paste ("Mean of steps per day: ", round(mean(StepsByDay$steps),2)))
 print (paste ("Median of steps per day: ", round(median(StepsByDay$steps),2)))
@@ -34,30 +43,30 @@ print (paste ("Median of steps per day: ", round(median(StepsByDay$steps),2)))
 ## What is the average daily activity pattern?
 
 ```{r}
-
 AvgStepsByInterval<-aggregate(steps~interval, data=MyData, mean)
-qplot(interval, steps, data=AvgStepsByInterval, geom="line")
+qplot(interval, steps, data=AvgStepsByInterval, geom="line") + ggtitle("average number of steps taken per interval, averaged across all days")
 
-print (paste("Max Interval: ", AvgStepsByInterval[AvgStepsByInterval$steps == max(AvgStepsByInterval$steps),]$interval))
+print (paste("The 5-minute interval containing the most steps: ", AvgStepsByInterval[AvgStepsByInterval$steps == max(AvgStepsByInterval$steps),]$interval))
 
 ```
 
-
-
 ## Imputing missing values
 
-```{r}
+There are 8 entire days with missing values. Each day has 288 5-minute intervals. Then, 8*288 = 2304 rows with NAs.
+I used the average number of steps for each interval accross all days.
+This strategy impacts the number of days with average figures.
 
+```{r}
 print(paste("Number of rows with NA: ", sum(rowSums(is.na(MyData)))))
-library(dplyr)
 FilledData<-MyData
 FilledData[is.na(MyData$steps),"steps"] <- rep(AvgStepsByInterval$steps, 8)
 
 FilledStepsByDay<-aggregate(steps~date, data=FilledData, sum)
 m <- ggplot(FilledStepsByDay, aes(x=steps)) 
-m + geom_histogram(aes(fill = ..count..), binwidth=1000)
+m + geom_histogram(aes(fill = ..count..), binwidth=1000) + ggtitle("total number of steps taken each day")
 
 ```
+
 
 ## Are there differences in activity patterns between weekdays and weekends?
 
@@ -66,7 +75,9 @@ m + geom_histogram(aes(fill = ..count..), binwidth=1000)
 FilledData<-mutate(FilledData, Week = factor(1 * (weekday %in% (c("Saturday", "Sunday"))), labels = c("Weekday", "weekend")))
 FilledAvgStepsByInterval<-aggregate(steps~ interval + Week , data=FilledData, mean)
 
-ggplot(FilledAvgStepsByInterval, aes(x=interval, y=steps, group=Week)) + geom_line() + facet_grid(Week~.)
-
+ggplot(FilledAvgStepsByInterval, aes(x=interval, y=steps, group=Week)) + geom_line() + facet_grid(Week~.) + ggtitle("average number of steps taken per interval, averaged across all days")
 
 ```
+
+With the plot above, we can see the same pattern between weekday and weekend with slight differences. In particularly, steps are done sooner during the weekdays. 
+
